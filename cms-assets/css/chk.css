@@ -1,0 +1,33 @@
+       
+.ch {
+    display: inline-block;
+}
+
+input[type=checkbox] {
+    display: none;
+}
+
+input[type="checkbox"] + label {
+    display: inline-block;
+    padding: 0 0 0 0px;
+    background: url(../img/uncheck.png) no-repeat;
+    height: 28px;
+    width: 28px;
+    background-size: 100%;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+input[type="checkbox"]:checked  + label {
+    background: url(../img/check.png) no-repeat;
+    height: 28px;
+    width: 28px;
+    display: inline-block;
+    background-size: 100%;
+    vertical-align: middle;
+}
+
+.fw600{
+font-weight: 600;
+}
+    
