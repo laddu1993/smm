@@ -253,7 +253,6 @@ class SocialPost extends CI_Controller
 		}
 		//$facebook_data = $social_data['facebook_data'];
 		$twitter_data = $social_data['twitter_data'];
-		$linkedin_data = $social_data['linkedin_data'];
 
 		if (!empty($twitter_data)) {
 
@@ -296,32 +295,6 @@ class SocialPost extends CI_Controller
 	        $data['twitter_user_profile'] = $res;
 	    }
 
-	    // linkedin feeds start from here
-        if (!empty($linkedin_data)) {
-	      	$client = new Client(
-	            '81l2aflu70xgnc',
-	            'xL3DGbcrKCB5h60q'
-	        );
-	      	
-	      	$linkedin_access_token = $linkedin_data['access_token'];
-	      	$getExpiresAt = $linkedin_data['getExpiresAt'];
-	      	$company_id = $linkedin_data['linkedin_company_id'];
-
-		    $access_token = new AccessToken($linkedin_access_token,$getExpiresAt);
-		    $client->setAccessToken($access_token);
-
-		    // Profile Data
-		    $profile = $client->get('people/~:(id,firstName,lastName,pictureUrls::(original),headline,publicProfileUrl,location,industry,positions,email-address)');
-
-		    // Company Data 
-		    $company_about = $client->get('companies/'.$company_id.':(id,name,ticker,description)?format=json');
-		    $company_data = $client->get('companies/'.$company_id.'/updates?format=json');
-
-		    $data['linkedin_profile'] = $profile;
-		    $data['linkedin_company'] = $company_about;
-		    $data['linkedin_company_share_data'] = $company_data;
-		}
-
 		//echo "<pre>";print_r($data);die;
 
 		$this->load->view('dashboard/header');
@@ -336,6 +309,7 @@ class SocialPost extends CI_Controller
 	function facebook_feeds(){
 		$social_data = $this->pro->social_integration_data();
 		$facebook_data = $social_data['facebook_data'];
+		if (!empty($facebook_data)) {
 		$fb = new Facebook\Facebook([
 	        'app_id' => '1459174307464450', // Replace {app-id} with your app id
 	        'app_secret' => '5be12280339255f88646dc2804cdb7c6',
@@ -430,7 +404,82 @@ class SocialPost extends CI_Controller
             $new_html = implode("", $new_html);
             $data_json = array('status' => $status, 'result' => $new_html);
             echo json_encode($data_json);
+		}else{
+			$html .= '<div class="feed-post no-data"> No Data Available. </div>';
+			$data_json = array('status' => 'fail', 'result' => $html);
+            echo json_encode($data_json);
+		}
 		
+	}
+
+	function linkedin_feeds(){
+		$social_data = $this->pro->social_integration_data();
+		$linkedin_data = $social_data['linkedin_data'];
+		if (!empty($linkedin_data)) {
+	      	$client = new Client(
+	            '81l2aflu70xgnc',
+	            'xL3DGbcrKCB5h60q'
+	        );
+	      	$linkedin_access_token = $linkedin_data['access_token'];
+	      	$getExpiresAt = $linkedin_data['getExpiresAt'];
+	      	$company_id = $linkedin_data['linkedin_company_id'];
+
+		    $access_token = new AccessToken($linkedin_access_token,$getExpiresAt);
+		    $client->setAccessToken($access_token);
+
+		    if (isset($_POST['req_type']) && !empty($_POST['req_type'] == 'linkedin_pagination')) {
+				$offset = $this->input->post('offset');
+				if (empty($offset)) {
+					$offset = 0;
+				}
+				$company_data = $client->get('companies/'.$company_id.'/updates?start='.$offset.'&count=10&format=json');
+		    	$linkedin_company_share_data = $company_data;
+			}
+			if (!empty($linkedin_company_share_data['values'])) { $i = 1; foreach ($linkedin_company_share_data['values'] as $value) { 
+                    $updateContent = $value['updateContent'];
+                    if (!empty($updateContent)) {
+                        $message = $updateContent['companyStatusUpdate']['share']['comment'];
+                        $media_link = $updateContent['companyStatusUpdate']['share']['content']['submittedImageUrl'];
+                        $time = $updateContent['companyStatusUpdate']['share']['timestamp'];
+                    }
+                    $comments = $value['updateComments']['_total'];
+                    $likes_count = $value['numLikes'];
+                    $is_self_liked = $value['likes'];
+                    $updateKey_og = $value['updateKey'];
+                    $updateKey = explode("-", $updateKey_og);
+                    $id = $updateKey[2];
+                    $str_id = '`'.$id.'`';
+					$html = '<div class="feed-post">
+                        <div style="float: right;"></div>';
+                    if(!empty($message)){
+                    $html .= '<div class="feed-post-text">'.$message.'</div>';
+                	}if (!empty($media_link)) {
+                	$html .= '<div class="feed-post-image"><img src="'.$media_link.'"></div>';
+                    }
+                    $html .= '<div class="feed-post-metrics"><span id="'.$id.'" >';
+                    if(!empty($is_self_liked)) {
+                    $html .= '<img src="'.base_url().'cms-assets/img/Liked Icon.png" style="width: 17px;">';
+                    }else{
+                    $html .= '<img src="'.base_url().'cms-assets/img/Likes Icon 02.png" style="width: 17px;">';
+                    }
+                    $html .= '<span id="likes_count_'.$id.'">'.$likes_count.'</span></span><span><img src="'.base_url().'cms-assets/img/Comment Icon.png" style="width: 17px;">'.$comments.'</span></div></div>';
+                    $new_html[] = $html;
+               		$status = 'success';
+                    $i++;
+				}
+			}else{
+	           	$html .= '<div class="feed-post no-data"> No Data Available. </div>';
+	            $status = 'fail';
+            }
+		    $new_html = implode("", $new_html);
+            $data_json = array('status' => $status, 'result' => $new_html);
+            echo json_encode($data_json);
+		}else{
+			$html .= '<div class="feed-post no-data"> No Data Available. </div>';
+			$data_json = array('status' => 'fail', 'result' => $html);
+            echo json_encode($data_json);
+		}
+
 	}
 
 	function sentiment(){

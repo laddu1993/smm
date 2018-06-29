@@ -172,53 +172,11 @@
                     
                     <img src="<?= site_url('cms-assets/img/Link.png') ?>" style="width:50px;">
                     <div class="col-md-12" style="margin-top:10px;">
-              </div>
+                    </div>
                 </div>
-
-                <div class="feed-post-panel">
-                  <?php if (!empty($linkedin_company_share_data['values'])) { $i = 1; foreach ($linkedin_company_share_data['values'] as $value) { 
-                    $updateContent = $value['updateContent'];
-                    if (!empty($updateContent)) {
-                        $message = $updateContent['companyStatusUpdate']['share']['comment'];
-                        $media_link = $updateContent['companyStatusUpdate']['share']['content']['submittedImageUrl'];
-                        $time = $updateContent['companyStatusUpdate']['share']['timestamp'];
-                    }
-                    $comments = $value['updateComments']['_total'];
-                    $likes_count = $value['numLikes'];
-                    $is_self_liked = $value['likes'];
-                    $updateKey_og = $value['updateKey'];
-                    $updateKey = explode("-", $updateKey_og);
-                    $id = $updateKey[2];
-                  ?>
-                    <div class="feed-post">
-                        <div style="float: right;"></div>
-                        <?php if(!empty($message)){ ?>
-                        <div class="feed-post-text">
-                          <?php echo $message; ?>
-                        </div>
-                        <?php }if (!empty($media_link)) { ?>
-                        <div class="feed-post-image">
-                            <img src="<?php echo $media_link; ?>">
-                        </div>
-                        <?php } ?>
-                        <div class="feed-post-metrics">
-                          <?php if (!empty($is_self_liked)) {  ?>
-                            <input type="hidden" name="is_like" id="is_like_<?php echo $id; ?>" value="<?php echo "unlike"; ?>">
-                          <?php }else{ ?>
-                            <input type="hidden" name="is_like" id="is_like_<?php echo $id; ?>" value="<?php echo "like"; ?>">
-                          <?php } ?>
-                          <!-- <span id="<?php echo $id; ?>" onclick="return social_like('<?php echo $updateKey_og; ?>','is_like_<?php echo $id; ?>','likes_count_<?php echo $id; ?>','linkedin_action')"> -->
-                            <span id="<?php echo $id; ?>" > <?php if(!empty($is_self_liked)) { ?><img src="<?= site_url('cms-assets/img/Liked Icon.png') ?>" style="width: 17px;"><?php }else{ ?> <img src="<?= site_url('cms-assets/img/Likes Icon 02.png') ?>" style="width: 17px;"> <?php } ?><span id="likes_count_<?php echo $id; ?>"><?php echo $likes_count; ?></span></span>
-                            <span><img src="<?= site_url('cms-assets/img/Comment Icon.png') ?>" style="width: 17px;"> <?php echo $comments; ?></span>
-                        </div>
-                    </div>
-                  <?php $i++; } }else{ ?>
-                  <div class="feed-post">
-                    <div class="feed-post-text">
-                        No Data Available.      
-                    </div>
-                  </div>
-                  <?php } ?>
+                <input type="hidden" name="linkedin_offset" id="linkedin_offset" value="10">
+                <div class="feed-post-panel linkedin_timeline" id="linkedin_ajax_data" linkedin-offset="10" linkedin-status-scroll="0">
+                  
                 </div>
             </div>
             <div class="feed-panel">
@@ -249,10 +207,25 @@ $(document).ready(function(){
         var obj = JSON.parse(data);
         if (obj.status == 'success') {
      		$('#fb_ajax_data').append(obj.result);
-     	}else{
-	        $('#fb_ajax_data').append(obj.result);
-	    }
-    }});
+       	}else{
+  	        $('#fb_ajax_data').append(obj.result);
+  	    }
+      }
+  });
+
+  $.ajax({ url: "<?= site_url('SocialPost/linkedin_feeds') ?>",
+      type: 'POST',
+      data: {req_type:'linkedin_pagination'},
+      success: function(data){
+          var obj = JSON.parse(data);
+          if (obj.status == 'success') {
+            $('#linkedin_ajax_data').append(obj.result);
+          }else{
+            $('#linkedin_ajax_data').append(obj.result);
+          }   
+      }
+  });
+
 });
 
 jQuery(function($) {
@@ -283,6 +256,36 @@ jQuery(function($) {
             		$('#fb_ajax_data').append(null_html);
             	}
             	$('#fb_ajax_data').attr('data-status-scroll', '1');
+            }
+        }
+    })
+    $('.linkedin_timeline').on('scroll', function() {
+        if($(this).scrollTop() + $(this).innerHeight() >= $(this)[0].scrollHeight) {
+            var offset = $('#linkedin_offset').val();
+            og_offset = parseInt($('#linkedin_ajax_data').attr('linkedin-offset'));
+            scroll = parseInt($('#linkedin_ajax_data').attr('linkedin-status-scroll'));
+            var new_offset = parseInt(offset) + 10;
+            if (offset == og_offset) {
+              $.ajax({ url: "<?= site_url('SocialPost/linkedin_feeds') ?>",
+                type: 'POST',
+                data: {offset: offset, req_type:'linkedin_pagination'},
+                success: function(data){
+                  var obj = JSON.parse(data);
+                  if (obj.status == 'success') {
+                    $('#linkedin_offset').val(new_offset);
+                    $('#linkedin_ajax_data').attr('linkedin-offset', new_offset);
+                    $('#linkedin_ajax_data').append(obj.result);
+                  }else{
+                    $('#linkedin_ajax_data').append(obj.result);
+                    $('#linkedin_ajax_data').attr('linkedin-offset', new_offset);
+                  }
+              }});
+            }else{
+              if (scroll == 0) {
+                var null_html = '<div class="feed-post"> No Data Available. </div>';
+                $('#linkedin_ajax_data').append(null_html);
+              }
+              $('#linkedin_ajax_data').attr('linkedin-status-scroll', '1');
             }
         }
     })
